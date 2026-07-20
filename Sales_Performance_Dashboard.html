@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sales Performance Dashboard</title>
+<style>
+  :root{
+    --navy:#0f2942;
+    --navy-2:#173a5e;
+    --accent:#2a78d6;
+    --bg:#eef1f5;
+    --card:#ffffff;
+    --border:#e0e4ea;
+    --text-primary:#1a1f29;
+    --text-secondary:#5a6472;
+    --text-muted:#8a93a1;
+    --green:#1baf7a;
+    --amber:#eda100;
+    --red:#e34948;
+    --purple:#7c3aed;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; font-family:'Segoe UI', Roboto, Arial, sans-serif;
+    background:var(--bg); color:var(--text-primary);
+  }
+  header{
+    background:var(--navy); color:#fff; padding:20px 28px;
+    display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;
+  }
+  header h1{ font-size:20px; font-weight:600; margin:0; }
+  header p{ margin:2px 0 0; font-size:13px; color:#b8c4d4; }
+  #recordCount{ font-size:13px; color:#cfe0f5; }
+
+  .filters-bar{
+    background:#fff; border-bottom:1px solid var(--border);
+    padding:12px 28px; display:flex; flex-wrap:wrap; gap:10px; align-items:center;
+    position:sticky; top:0; z-index:20;
+  }
+  .dropdown{ position:relative; }
+  .dropdown-btn{
+    background:#f6f8fb; border:1px solid var(--border); border-radius:6px;
+    padding:7px 12px; font-size:13px; color:var(--text-primary); cursor:pointer;
+    display:flex; align-items:center; gap:6px; white-space:nowrap;
+  }
+  .dropdown-btn:hover{ background:#eef2f7; }
+  .dropdown-btn .badge{
+    background:var(--accent); color:#fff; font-size:11px; border-radius:10px;
+    padding:1px 6px; min-width:16px; text-align:center; display:none;
+  }
+  .dropdown-btn.active .badge{ display:inline-block; }
+  .dropdown-panel{
+    display:none; position:absolute; top:calc(100% + 4px); left:0;
+    background:#fff; border:1px solid var(--border); border-radius:8px;
+    box-shadow:0 6px 20px rgba(20,30,50,0.12); min-width:180px; max-height:260px;
+    overflow-y:auto; padding:8px; z-index:30;
+  }
+  .dropdown-panel.open{ display:block; }
+  .dropdown-panel label{
+    display:flex; align-items:center; gap:8px; font-size:13px; padding:5px 6px;
+    border-radius:5px; cursor:pointer;
+  }
+  .dropdown-panel label:hover{ background:#f2f5f9; }
+  .reset-btn{
+    background:#fff; border:1px solid var(--red); color:var(--red);
+    border-radius:6px; padding:7px 14px; font-size:13px; cursor:pointer; font-weight:500;
+    margin-left:auto;
+  }
+  .reset-btn:hover{ background:#fdecec; }
+
+  nav.tabs{
+    background:#fff; border-bottom:1px solid var(--border); padding:0 28px;
+    display:flex; gap:4px; overflow-x:auto;
+  }
+  nav.tabs button{
+    background:none; border:none; padding:14px 18px; font-size:14px; font-weight:500;
+    color:var(--text-secondary); cursor:pointer; border-bottom:3px solid transparent; white-space:nowrap;
+  }
+  nav.tabs button.active{ color:var(--accent); border-bottom-color:var(--accent); }
+  nav.tabs button:hover{ color:var(--navy); }
+
+  main{ padding:24px 28px 48px; max-width:1400px; margin:0 auto; }
+  .tab-content{ display:none; }
+  .tab-content.active{ display:block; }
+
+  .kpi-grid{
+    display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));
+    gap:14px; margin-bottom:24px;
+  }
+  .kpi-card{
+    background:var(--card); border:1px solid var(--border); border-radius:10px;
+    padding:16px 18px;
+  }
+  .kpi-label{ font-size:12px; color:var(--text-secondary); margin-bottom:6px; font-weight:500; }
+  .kpi-value{ font-size:22px; font-weight:600; color:var(--navy); }
+  .kpi-sub{ font-size:11px; color:var(--text-muted); margin-top:4px; }
+
+  .charts-grid{
+    display:grid; grid-template-columns:repeat(auto-fit, minmax(420px, 1fr)); gap:16px;
+  }
+  .chart-card{
+    background:var(--card); border:1px solid var(--border); border-radius:10px; padding:16px 18px;
+  }
+  .chart-card.full{ grid-column:1 / -1; }
+  .chart-title{ font-size:14px; font-weight:600; color:var(--navy); margin:0 0 12px; }
+  .chart-wrap{ position:relative; width:100%; height:280px; }
+  .chart-wrap.tall{ height:340px; }
+  .empty-msg{
+    text-align:center; color:var(--text-muted); font-size:13px; padding:40px 0;
+  }
+  .legend-row{ display:flex; flex-wrap:wrap; gap:12px; margin-bottom:8px; font-size:12px; color:var(--text-secondary); }
+  .legend-row span.sw{ width:10px; height:10px; border-radius:2px; display:inline-block; margin-right:4px; vertical-align:middle; }
+
+  #noDataBanner{
+    display:none; background:#fff4e5; border:1px solid var(--amber); color:#7a5300;
+    border-radius:8px; padding:12px 16px; font-size:13px; margin-bottom:16px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>Sales Performance Dashboard</h1>
+    <p>Suraj R Bekal Creations : Sales &amp; Profitability Analysis</p>
+  </div>
+  <div id="recordCount"></div>
+</header>
+
+<div class="filters-bar" id="filtersBar"></div>
+
+<nav class="tabs" id="tabsNav">
+  <button data-tab="exec" class="active">Executive Overview</button>
+  <button data-tab="sales">Sales &amp; Profitability</button>
+  <button data-tab="cust">Customer &amp; Rep Performance</button>
+  <button data-tab="ops">Operations</button>
+</nav>
+
+<main>
+  <div id="noDataBanner">No records match the selected filters. Adjust or reset your filters to see data.</div>
+
+  <!-- TAB 1: EXECUTIVE OVERVIEW -->
+  <div class="tab-content active" id="tab-exec">
+    <div class="kpi-grid" id="kpi-exec"></div>
+    <div class="charts-grid">
+      <div class="chart-card full">
+        <div class="chart-title">Sales trend by month (Net Sales &amp; Profit)</div>
+        <div class="chart-wrap"><canvas id="chart-exec-trend" role="img" aria-label="Line chart of monthly net sales and profit"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Sales by region</div>
+        <div class="chart-wrap"><canvas id="chart-exec-region" role="img" aria-label="Bar chart of net sales by region"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Sales by category</div>
+        <div class="chart-wrap"><canvas id="chart-exec-category" role="img" aria-label="Donut chart of net sales by product category"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Order status split</div>
+        <div class="chart-wrap"><canvas id="chart-exec-status" role="img" aria-label="Donut chart of order counts by order status"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 2: SALES & PROFITABILITY -->
+  <div class="tab-content" id="tab-sales">
+    <div class="kpi-grid" id="kpi-sales"></div>
+    <div class="charts-grid">
+      <div class="chart-card">
+        <div class="chart-title">Sales vs profit by category</div>
+        <div class="chart-wrap"><canvas id="chart-sales-catcombo" role="img" aria-label="Combo chart of net sales bars and profit line by product category"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Profit margin % by region</div>
+        <div class="chart-wrap"><canvas id="chart-sales-marginregion" role="img" aria-label="Bar chart of profit margin percent by region"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Top 10 sub-categories by sales</div>
+        <div class="chart-wrap tall"><canvas id="chart-sales-subcat" role="img" aria-label="Horizontal bar chart of top 10 product sub-categories by net sales"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Monthly sales vs cost</div>
+        <div class="chart-wrap"><canvas id="chart-sales-salescost" role="img" aria-label="Line chart comparing monthly net sales and total cost"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 3: CUSTOMER & REP PERFORMANCE -->
+  <div class="tab-content" id="tab-cust">
+    <div class="kpi-grid" id="kpi-cust"></div>
+    <div class="charts-grid">
+      <div class="chart-card">
+        <div class="chart-title">Sales by customer segment</div>
+        <div class="chart-wrap"><canvas id="chart-cust-segment" role="img" aria-label="Donut chart of net sales by customer segment"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Sales rep leaderboard</div>
+        <div class="chart-wrap tall"><canvas id="chart-cust-repboard" role="img" aria-label="Horizontal bar chart of sales reps ranked by net sales"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Rating distribution (1&ndash;5)</div>
+        <div class="chart-wrap"><canvas id="chart-cust-ratingdist" role="img" aria-label="Column chart of order counts by customer rating from 1 to 5"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Average delivery days by region</div>
+        <div class="chart-wrap"><canvas id="chart-cust-deliveryregion" role="img" aria-label="Bar chart of average delivery days by region, excluding cancelled orders"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TAB 4: OPERATIONS -->
+  <div class="tab-content" id="tab-ops">
+    <div class="kpi-grid" id="kpi-ops"></div>
+    <div class="charts-grid">
+      <div class="chart-card full">
+        <div class="chart-title">Order status by month</div>
+        <div class="chart-wrap"><canvas id="chart-ops-statusmonth" role="img" aria-label="Stacked bar chart of order counts by status per month"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Delivery days distribution</div>
+        <div class="chart-wrap"><canvas id="chart-ops-deliverydist" role="img" aria-label="Histogram of delivery days, excluding cancelled orders"></canvas></div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Cancelled / returned orders by category</div>
+        <div class="chart-wrap"><canvas id="chart-ops-cancelcat" role="img" aria-label="Bar chart of cancelled and returned order counts by product category"></canvas></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+/* ============ DATA ============ */
+const DATA = [
+{"Order ID":"ORD-1001","Order Date":"2025-02-05","Year":2025,"Month":"Feb","Quarter":"Q1","Region":"North","State":"Delhi","Customer Segment":"Small Business","Product Category":"Apparel","Product Sub-Category":"Menswear","Sales Rep":"R. Iyer","Quantity":24,"Unit Price":1806.68,"Unit Cost":1328.21,"Gross Sales":43360.32,"Discount %":0.15,"Discount Amount":6504.048,"Net Sales":36856.272,"Total Cost":31877.04,"Profit":4979.232,"Profit Margin %":0.135098634,"Order Status":"Delivered","Ship Date":"2025-02-12","Delivery Days":7,"Customer Rating":0},
+{"Order ID":"ORD-1002","Order Date":"2025-01-07","Year":2025,"Month":"Jan","Quarter":"Q1","Region":"North","State":"Delhi","Customer Segment":"Consumer","Product Category":"Furniture","Product Sub-Category":"Storage","Sales Rep":"M. Fernandes","Quantity":18,"Unit Price":3222.91,"Unit Cost":2296.23,"Gross Sales":58012.38,"Discount %":0.15,"Discount Amount":8701.857,"Net Sales":49310.523,"Total Cost":41332.14,"Profit":7978.383,"Profit Margin %":0.1617987909,"Order Status":"Pending","Ship Date":"2025-01-11","Delivery Days":4,"Customer Rating":0},
+{"Order ID":"ORD-1003","Order Date":"2025-03-29","Year":2025,"Month":"Mar","Quarter":"Q1","Region":"West","State":"Rajasthan","Customer Segment":"Consumer","Product Category":"Furniture","Product Sub-Category":"Storage","Sales Rep":"P. Nair","Quantity":9,"Unit Price":2585.55,"Unit Cost":2040.78,"Gross Sales":23269.95,"Discount %":0.05,"Discount Amount":1163.4975,"Net Sales":22106.4525,"Total Cost":18367.02,"Profit":3739.4325,"Profit Margin %":0.1691557024,"Order Status":"Delivered","Ship Date":"2025-03-31","Delivery Days":2,"Customer Rating":5},
+{"Order ID":"ORD-1004","Order Date":"2025-07-06","Year":2025,"Month":"Jul","Quarter":"Q3","Region":"North","State":"Haryana","Customer Segment":"Corporate","Product Category":"Grocery","Product Sub-Category":"Beverages","Sales Rep":"A. Sharma","Quantity":15,"Unit Price":8182.55,"Unit Cost":6491.04,"Gross Sales":122738.25,"Discount %":0.1,"Discount Amount":12273.825,"Net Sales":110464.425,"Total Cost":97365.6,"Profit":13098.825,"Profit Margin %":0.1185795789,"Order Status":"Delivered","Ship Date":"2025-07-15","Delivery Days":9,"Customer Rating":4},
+{"Order ID":"ORD-1005","Order Date":"2025-02-28","Year":2025,"Month":"Feb","Quarter":"Q1","Region":"East","State":"Odisha","Customer Segment":"Small Business","Product Category":"Electronics","Product Sub-Category":"Mobiles","Sales Rep":"T. Bose","Quantity":25,"Unit Price":4554.0,"Unit Cost":2595.54,"Gross Sales":113850.0,"Discount %":0.0,"Discount Amount":0.0,"Net Sales":113850.0,"Total Cost":64888.5,"Profit":48961.5,"Profit Margin %":0.4300527009,"Order Status":"Delivered","Ship Date":"2025-03-07","Delivery Days":7,"Customer Rating":4},
+{"Order ID":"ORD-1006","Order Date":"2025-06-21","Year":2025,"Month":"Jun","Quarter":"Q2","Region":"West","State":"Rajasthan","Customer Segment":"Consumer","Product Category":"Apparel","Product Sub-Category":"Womenswear","Sales Rep":"R. Iyer","Quantity":9,"Unit Price":10616.76,"Unit Cost":7653.48,"Gross Sales":95550.84,"Discount %":0.0,"Discount Amount":0.0,"Net Sales":95550.84,"Total Cost":68881.32,"Profit":26669.52,"Profit Margin %":0.2791134018,"Order Status":"Cancelled","Ship Date":null,"Delivery Days":0,"Customer Rating":0},
+{"Order ID":"ORD-1007","Order Date":"2025-06-13","Year":2025,"Month":"Jun","Quarter":"Q2","Region":"South","State":"Tamil Nadu","Customer Segment":"Consumer","Product Category":"Home Appliances","Product Sub-Category":"Cooling","Sales Rep":"S. Khan","Quantity":23,"Unit Price":8487.16,"Unit Cost":6120.55,"Gross Sales":195204.68,"Discount %":0.0,"Discount Amount":0.0,"Net Sales":195204.68,"Total Cost":140772.65,"Profit":54432.03,"Profit Margin %":0.2788459273,"Order Status":"Delivered","Ship Date":"2025-06-14","Delivery Days":1,"Customer Rating":4},
+{"Order ID":"ORD-1008","Order Date":"2025-03-22","Year":2025,"Month":"Mar","Quarter":"Q1","Region":"West","State":"Rajasthan","Customer Segment":"Consumer","Product Category":"Furniture","Product Sub-Category":"Storage","Sales Rep":"T. Bose","Quantity":7,"Unit Price":9934.95,"Unit Cost":6446.87,"Gross Sales":69544.65,"Discount %":0.2,"Discount Amount":13908.93,"Net Sales":55635.72,"Total Cost":45128.09,"Profit":10507.63,"Profit Margin %":0.1888648156,"Order Status":"Pending","Ship Date":"2025-03-25","Delivery Days":3,"Customer Rating":0},
+{"Order ID":"ORD-1009","Order Date":"2025-07-11","Year":2025,"Month":"Jul","Quarter":"Q3","Region":"East","State":"Odisha","Customer Segment":"Consumer","Product Category":"Grocery","Product Sub-Category":"Snacks","Sales Rep":"S. Khan","Quantity":19,"Unit Price":6597.98,"Unit Cost":4591.42,"Gross Sales":125361.62,"Discount %":0.05,"Discount Amount":6268.081,"Net Sales":119093.539,"Total Cost":87236.98,"Profit":31856.559,"Profit Margin %":0.2674919166,"Order Status":"Delivered","Ship Date":"2025-07-14","Delivery Days":3,"Customer Rating":5},
+{"Order ID":"ORD-1010","Order Date":"2025-02-10","Year":2025,"Month":"Feb","Quarter":"Q1","Region":"West","State":"Maharashtra","Customer Segment":"Consumer","Product Category":"Electronics","Product Sub-Category":"Mobiles","Sales Rep":"T. Bose","Quantity":22,"Unit Price":6505.75,"Unit Cost":3681.49,"Gross Sales":143126.5,"Discount %":0.1,"Discount Amount":14312.65,"Net Sales":128813.85,"Total Cost":80992.78,"Profit":47821.07,"Profit Margin %":0.3712416794,"Order Status":"Cancelled","Ship Date":null,"Delivery Days":0,"Customer Rating":0},
+{"Order ID":"ORD-1011","Order Date":"2025-01-30","Year":2025,"Month":"Jan","Quarter":"Q1","Region":"West","State":"Rajasthan","Customer Segment":"Small Business","Product Category":"Electronics","Product Sub-Category":"Accessories","Sales Rep":"T. Bose","Quantity":22,"Unit Price":13306.39,"Unit Cost":9816.38,"Gross Sales":292740.58,"Discount %":0.2,"Discount Amount":58548.116,"Net Sales":234192.464,"Total Cost":215960.36,"Profit":18232.104,"Profit Margin %":0.0778509423,"Order Status":"Delivered","Ship Date":"2025-02-01","Delivery Days":2,"Customer Rating":4},
+{"Order ID":"ORD-1012","Order Date":"2025-03-09","Year":2025,"Month":"Mar","Quarter":"Q1","Region":"West","State":"Gujarat","Customer Segment":"Corporate","Product Category":"Electronics","Product Sub-Category":"Accessories","Sales Rep":"T. Bose","Quantity":17,"Unit Price":11500.84,"Unit Cost":7785.15,"Gross Sales":195514.28,"Discount %":0.0,"Discount Amount":0.0,"Net Sales":195514.28,"Total Cost":132347.55,"Profit":63166.73,"Profit Margin %":0.3230798794,"Order Status":"Delivered","Ship Date":"2025-03-18","Delivery Days":9,"Customer Rating":2},
+{"Order ID":"ORD-1013","Order Date":"2025-01-01","Year":2025,"Month":"Jan","Quarter":"Q1","Region":"South","State":"Tamil Nadu","Customer Segment":"Corporate","Product Category":"Furniture","Product Sub-Category":"Storage","Sales Rep":"M. Fernandes","Quantity":20,"Unit Price":5065.09,"Unit Cost":2810.46,"Gross Sales":101301.8,"Discount %":0.05,"Discount Amount":5065.09,"Net Sales":96236.71,"Total Cost":56209.2,"Profit":40027.51,"Profit Margin %":0.4159276642,"Order Status":"Delivered","Ship Date":"2025-01-05","Delivery Days":4,"Customer Rating":0},
+{"Order ID":"ORD-1014","Order Date":"2025-07-16","Year":2025,"Month":"Jul","Quarter":"Q3","Region":"South","State":"Karnataka","Customer Segment":"Consumer","Product Category":"Home Appliances","Product Sub-Category":"Kitchen","Sales Rep":"M. Fernandes","Quantity":5,"Unit Price":2187.35,"Unit Cost":1462.94,"Gross Sales":10936.75,"Discount %":0.15,"Discount Amount":1640.5125,"Net Sales":9296.2375,"Total Cost":7314.7,"Profit":1981.5375,"Profit Margin %":0.2131547844,"Order Status":"Delivered","Ship Date":"2025-07-21","Delivery Days":5,"Customer Rating":5},
+{"Order ID":"ORD-1015","Order Date":"2025-04-13","Year":2025,"Month":"Apr","Quarter":"Q2","Region":"West","State":"Gujarat","Customer Segment":"Small Business","Product Category":"Furniture","Product Sub-Category":"Storage","Sales Rep":"S. Khan","Quantity":22,"Unit Price":9853.21,"Unit Cost":6498.44,"Gross Sales":216770.62,"Discount %":0.15,"Discount Amount":32515.593,"Net Sales":184255.027,"Total Cost":142965.68,"Profit":41289.347,"Profit Margin %":0.2240880353,"Order Status":"Pending","Ship Date":"2025-04-15","Delivery Days":2,"Customer Rating":0},
+{"Order ID":"ORD-1016","Order Date":"2025-05-22","Year":2025,"Month":"May","Quarter":"Q2","Region":"South","State":"Tamil Nadu","Customer Segment":"Consumer","Product Category":"Apparel","Product Sub-Category":"Menswear","Sales Rep":"M. Fernandes","Quantity":8,"Unit Price":8950.07,"Unit Cost":4938.63,"Gross Sales":71600.56,"Discount %":0.2,"Discount Amount":14320.112,"Net Sales":57280.448,"Total Cost":39509.04,"Profit":17771.408,"Profit Margin %":0.3102526014,"Order Status":"Delivered","Ship Date":"2025-05-26","Delivery Days":4,"Customer Rating":3},
+{"Order ID":"ORD-1017","Order Date":"2025-06-21","Year":2025,"Month":"Jun","Quarter":"Q2","Region":"North","State":"Haryana","Customer Segment":"Consumer","Product Category":"Grocery","Product Sub-Category":"Staples","Sales Rep":"S. Khan","Quantity":16,"Unit Price":3449.28,"Unit Cost":2011.2,"Gross Sales":55188.48,"Discount %":0.15,"Discount Amount":8278.272,"Net Sales":46910.208,"Total Cost":32179.2,"Profit":14731.008,"Profit Margin %":0.3140256381,"Order Status":"Cancelled","Ship Date":null,"Delivery Days":0,"Customer Rating":0},
+{"Order ID":"ORD-1018","Order Date":"2025-01-25","Year":2025,"Month":"Jan","Quarter":"Q1","Region":"West","State":"Gujarat","Customer Segment":"Corporate","Product Category":"Home Appliances","Product Sub-Category":"Kitchen","Sales Rep":"A. Sharma","Quantity":22,"Unit Price":6636.45,"Unit Cost":4352.81,"Gross Sales":146001.9,"Discount %":0.1,"Discount Amount":14600.19,"Net Sales":131401.71,"Total Cost":95761.82,"Profit":35639.89,"Profit Margin %":0.2712285099,"Order Status":"Delivered","Ship Date":"2025-01-27","Delivery Days":2,"Customer Rating":0},
+{"Order ID":"ORD-1019","Order Date":"2025-05-18","Year":2025,"Month":"May","Quarter":"Q2","Region":"West","State":"Rajasthan","Customer Segment":"Consumer","Product Category":"Furniture","Product Sub-Category":"Chairs","Sales Rep":"R. Iyer","Quantity":15,"Unit Price":2360.68,"Unit Cost":1406.66,"Gross Sales":35410.2,"Discount %":0.1,"Discount Amount":3541.02,"Net Sales":31869.18,"Total Cost":21099.9,"Profit":10769.28,"Profit Margin %":0.3379214652,"Order Status":"Delivered","Ship Date":"2025-05-20","Delivery Days":2,"Customer Rating":5},
+{"Order ID":"ORD-1020","Order Date":"2025-07-12","Year":2025,"Month":"Jul","Quarter":"Q3","Region":"North","State":"Delhi","Customer Segment":"Small Business","Product Category":"Grocery","Product Sub-Category":"Staples","Sales Rep":"A. Sharma","Quantity":8,"Unit Price":2744.77,"Unit Cost":1842.87,"Gross Sales":21958.16,"Discount %":0.0,"Discount Amount":0.0,"Net Sales":21958.16,"Total Cost":14742.96,"Profit":7215.2,"Profit Margin %":0.328588552,"Order Status":"Pending","Ship Date":"2025-07-13","Delivery Days":1,"Customer Rating":0},
+{"Order ID":"ORD-1021","Order Date":"2025-03-15","Year":2025,"Month":"Mar","Quarter":"Q1","Region":"South","State":"Telangana","Customer Segment":"Consumer","Product Category":"Home Appliances","Product Sub-Category":"Cooling","Sales Rep":"P. Nair","Quantity":14,"Unit Price":10539.9,"Unit Cost":7721.81,"Gross Sales":147558.6,"Discount %":0.15,"Discount Amount":22133.79,"Net Sales":125424.81,"Total Cost":108105.34,"Profit":17319.47,"Profit Margin %":0.1380864759,"Order Status":"Pending","Ship Date":"2025-03-18","Delivery Days":3,"Customer Rating":0},
+{"Order ID":"ORD-1022","Order Date":"2025-05-19","Year":2025,"Month":"May","Quarter":"Q2","Region":"South","State":"Kerala","Customer Segment":"Consumer","Product Category":"Electronics","Product Sub-Category":"Accessories","Sales Rep":"T. Bose","Quantity":2,"Unit Price":11295.24,"Unit Cost":6373.81,"Gross Sales":22590.48,"Discount %":0.15,"Discount Amount":3388.572,"Net Sales":19201.908,"Total Cost":12747.62,"Profit":6454.288,"Profit Margin %":0.3361274307,"Order Status":"Pending","Ship Date":"2025-05-28","Delivery Days":9,"Customer Rating":0},
+{"Order ID":"ORD-1023","Order Date":"2025-06-02","Year":2025,"Month":"Jun","Quarter":"Q2","Region":"South","State":"Karnataka","Customer Segment":"Small Business","Product Category":"Electronics","Product Sub-Category":"Mobiles","Sales Rep":"A. Sharma","Quantity":3,"Unit Price":10225.62,"Unit Cost":6225.37,"Gross Sales":30676.86,"Discount %":0.0,"Discount Amount":0.0,"Net Sales":30676.86,"Total Cost":18676.11,"Profit":12000.75,"Profit Margin %":0.3911987733,"Order Status":"Cancelled","Ship Date":null,"Delivery Days":0,"Customer Rating":0},
+{"Order ID":"ORD-1024","Order Date":"2025-05-30","Year":2025,"Month":"May","Quarter":"Q2","Region":"South","State":"Karnataka","Customer Segment":"Small Business","Product Category":"Electronics","Product Sub-Category":"Laptops","Sales Rep":"T. Bose","Quantity":19,"Unit Price":7984.91,"Unit Cost":6257.59,"Gross Sales":151713.29,"Discount %":0.0,"Discount Amount":0.0,"Net Sales":151713.29,"Total Cost":118894.21,"Profit":32819.08,"Profit Margin %":0.2163230393,"Order Status":"Delivered","Ship Date":"2025-06-03","Delivery Days":4,"Customer Rating":4},
+{"Order ID":"ORD-1025","Order Date":"2025-07-12","Year":2025,"Month":"Jul","Quarter":"Q3","Region":"West","State":"Gujarat","Customer Segment":"Small Business","Product Category":"Apparel","Product Sub-Category":"Womenswear","Sales Rep":"S. Khan","Quantity":3,"Unit Price":436.94,"Unit Cost":308.17,"Gross Sales":1310.82,"Discount %":0.15,"Discount Amount":196.623,"Net Sales":1114.197,"Total Cost":924.51,"Profit":189.687,"Profit Margin %":0.1702454772,"Order Status":"Delivered","Ship Date":"2025-07-14","Delivery Days":2,"Customer Rating":5},
+{"Order ID":"ORD-1026","Order Date":"2025-04-05","Year":2025,"Month":"Apr","Quarter":"Q2","Region":"South","State":"Kerala","Customer Segment":"Consumer","Product Category":"Apparel","Product Sub-Category":"Menswear","Sales Rep":"R. Iyer","Quantity":10,"Unit Price":2618.88,"Unit Cost":1986.25,"Gross Sales":26188.8,"Discount %":0.2,"Discount Amount":5237.76,"Net Sales":20951.04,"Total Cost":19862.5,"Profit":1088.54,"Profit Margin %":0.0519563707,"Order Status":"Delivered","Ship Date":"2025-04-14","Delivery Days":9,"Customer Rating":0},
+{"Order ID":"ORD-1027","Order Date":"2025-07-10","Year":2025,"Month":"Jul","Quarter":"Q3","Region":"East","State":"West Bengal","Customer Segment":"Consumer","Product Category":"Apparel","Product Sub-Category":"Menswear","Sales Rep":"A. Sharma","Quantity":18,"Unit Price":2585.08,"Unit Cost":1603.88,"Gross Sales":46531.44,"Discount %":0.0,"Discount Amount":0.0,"Net Sales":46531.44,"Total Cost":28869.84,"Profit":17661.6,"Profit Margin %":0.3795627215,"Order Status":"Delivered","Ship Date":"2025-07-14","Delivery Days":4,"Customer Rating":4},
+{"Order ID":"ORD-1028","Order Date":"2025-03-12","Year":2025,"Month":"Mar","Quarter":"Q1","Region":"West","State":"Rajasthan","Customer Segment":"Consumer","Product Category":"Electronics","Product Sub-Category":"Accessories","Sales Rep":"P. Nair","Quantity":2,"Unit Price":352.12,"Unit Cost":261.55,"Gross Sales":704.24,"Discount %":0.2,"Discount Amount":140.848,"Net Sales":563.392,"Total Cost":523.1,"Profit":40.292,"Profit Margin %":0.0715168125,"Order Status":"Delivered","Ship Date":"2025-03-15","Delivery Days":3,"Customer Rating":5},
+{"Order ID":"ORD-1029","Order Date":"2025-05-20","Year":2025,"Month":"May","Quarter":"Q2","Region":"West","State":"Maharashtra","Customer Segment":"Consumer","Product Category":"Electronics","Product Sub-Category":"Accessories","Sales Rep":"R. Iyer","Quantity":2,"Unit Price":12568.55,"Unit Cost":8743.03,"Gross Sales":25137.1,"Discount %":0.0,"Discount Amount":0.0,"Net Sales":25137.1,"Total Cost":17486.06,"Profit":7651.04,"Profit Margin %":0.3043724216,"Order Status":"Pending","Ship Date":"2025-05-23","Delivery Days":3,"Customer Rating":0},
+{"Order ID":"ORD-1030","Order Date":"2025-06-24","Year":2025,"Month":"Jun","Quarter":"Q2","Region":"North","State":"Haryana","Customer Segment":"Corporate","Product Category":"Electronics","Product Sub-Category":"Laptops","Sales Rep":"R. Iyer","Quantity":8,"Unit Price":10103.92,"Unit Cost":6450.54,"Gross Sales":80831.36,"Discount %":0.15,"Discount Amount":12124.704,"Net Sales":68706.656,"Total Cost":51604.32,"Profit":17102.336,"Profit Margin %":0.2489181834,"Order Status":"Pending","Ship Date":"2025-06-27","Delivery Days":3,"Customer Rating":0}
+];
+
+/* ============ CONSTANTS & HELPERS ============ */
+const MONTH_ORDER = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const QUARTER_ORDER = ['Q1','Q2','Q3','Q4'];
+const STATUS_COLORS = { Delivered:'#1baf7a', Pending:'#eda100', Cancelled:'#e34948', Returned:'#7c3aed' };
+const PALETTE = ['#2a78d6','#1baf7a','#eda100','#7c3aed','#e34948','#eb6834','#e87ba4','#059669','#0891b2','#64748b','#4a3aa7','#008300'];
+const paletteMaps = {};
+function colorFor(dim, value){
+  if(STATUS_COLORS[value] && dim==='Order Status') return STATUS_COLORS[value];
+  if(!paletteMaps[dim]) paletteMaps[dim] = {};
+  const map = paletteMaps[dim];
+  if(!(value in map)){
+    const idx = Object.keys(map).length % PALETTE.length;
+    map[value] = PALETTE[idx];
+  }
+  return map[value];
+}
+const fmtCurrency = n => '₹' + new Intl.NumberFormat('en-IN', {maximumFractionDigits:0}).format(Math.round(n||0));
+const fmtNum = n => new Intl.NumberFormat('en-IN').format(Math.round(n||0));
+const fmtPct = n => (isFinite(n) && !isNaN(n) ? (n*100).toFixed(1) : '0.0') + '%';
+const fmt1 = n => (isFinite(n) && !isNaN(n) ? n.toFixed(1) : '0.0');
+function sumBy(arr, f){ return arr.reduce((s,r)=> s + (Number(r[f])||0), 0); }
+function countWhere(arr, fn){ return arr.filter(fn).length; }
+function div(a,b){ return b ? a/b : 0; }
+function groupSum(arr, gField, vField){
+  const m = {};
+  arr.forEach(r=>{ const k = r[gField]; m[k] = (m[k]||0) + (Number(r[vField])||0); });
+  return m;
+}
+function groupCount(arr, gField){
+  const m = {};
+  arr.forEach(r=>{ const k = r[gField]; m[k] = (m[k]||0) + 1; });
+  return m;
+}
+function sortMonthKeys(keys){
+  return keys.slice().sort((a,b)=> MONTH_ORDER.indexOf(a) - MONTH_ORDER.indexOf(b));
+}
+function maxKey(obj){
+  let bestK = null, bestV = -Infinity;
+  Object.keys(obj).forEach(k=>{ if(obj[k] > bestV){ bestV = obj[k]; bestK = k; } });
+  return bestK;
+}
+
+/* ============ FILTER STATE ============ */
+const FILTER_FIELDS = ['Year','Quarter','Month','Region','Customer Segment','Product Category','Order Status','Sales Rep'];
+const filters = {};
+FILTER_FIELDS.forEach(f => filters[f] = new Set());
+
+function uniqueValuesFor(field){
+  let vals = [...new Set(DATA.map(r=>String(r[field])))];
+  if(field==='Month') vals = sortMonthKeys(vals);
+  else if(field==='Quarter') vals = vals.sort((a,b)=>QUARTER_ORDER.indexOf(a)-QUARTER_ORDER.indexOf(b));
+  else if(field==='Year') vals = vals.sort((a,b)=>Number(a)-Number(b));
+  else vals = vals.sort();
+  return vals;
+}
+
+function getFiltered(){
+  return DATA.filter(r=>{
+    for(const f of FILTER_FIELDS){
+      const sel = filters[f];
+      if(sel.size>0 && !sel.has(String(r[f]))) return false;
+    }
+    return true;
+  });
+}
+
+/* ============ BUILD FILTER BAR ============ */
+const filtersBar = document.getElementById('filtersBar');
+FILTER_FIELDS.forEach(field=>{
+  const wrap = document.createElement('div');
+  wrap.className = 'dropdown';
+  const btn = document.createElement('button');
+  btn.className = 'dropdown-btn';
+  btn.innerHTML = `${field} <span class="badge" id="badge-${field}"></span> <span>&#9662;</span>`;
+  const panel = document.createElement('div');
+  panel.className = 'dropdown-panel';
+  panel.id = `panel-${field}`;
+  uniqueValuesFor(field).forEach(val=>{
+    const lbl = document.createElement('label');
+    lbl.innerHTML = `<input type="checkbox" value="${val}"> ${val}`;
+    lbl.querySelector('input').addEventListener('change', (e)=>{
+      if(e.target.checked) filters[field].add(val);
+      else filters[field].delete(val);
+      updateBadge(field);
+      renderAll();
+    });
+    panel.appendChild(lbl);
+  });
+  btn.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    document.querySelectorAll('.dropdown-panel').forEach(p=>{ if(p!==panel) p.classList.remove('open'); });
+    panel.classList.toggle('open');
+  });
+  wrap.appendChild(btn);
+  wrap.appendChild(panel);
+  filtersBar.appendChild(wrap);
+});
+document.addEventListener('click', ()=> document.querySelectorAll('.dropdown-panel').forEach(p=>p.classList.remove('open')));
+
+function updateBadge(field){
+  const badge = document.getElementById(`badge-${field}`);
+  const btn = badge.closest('.dropdown-btn');
+  const n = filters[field].size;
+  badge.textContent = n;
+  btn.classList.toggle('active', n>0);
+}
+
+const resetBtn = document.createElement('button');
+resetBtn.className = 'reset-btn';
+resetBtn.textContent = 'Reset filters';
+resetBtn.addEventListener('click', ()=>{
+  FILTER_FIELDS.forEach(f=>{
+    filters[f].clear();
+    document.querySelectorAll(`#panel-${CSS.escape(f)} input`).forEach(cb=>cb.checked=false);
+    updateBadge(f);
+  });
+  renderAll();
+});
+filtersBar.appendChild(resetBtn);
+
+/* ============ TABS ============ */
+let activeTab = 'exec';
+document.getElementById('tabsNav').addEventListener('click', (e)=>{
+  const btn = e.target.closest('button[data-tab]');
+  if(!btn) return;
+  activeTab = btn.dataset.tab;
+  document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.toggle('active', b===btn));
+  document.querySelectorAll('.tab-content').forEach(tc=>tc.classList.remove('active'));
+  document.getElementById(`tab-${activeTab}`).classList.add('active');
+  renderCharts(activeTab, getFiltered());
+});
+
+/* ============ KPI CARD HELPER ============ */
+function kpiCard(label, value, sub){
+  return `<div class="kpi-card"><div class="kpi-label">${label}</div><div class="kpi-value">${value}</div>${sub?`<div class="kpi-sub">${sub}</div>`:''}</div>`;
+}
+
+/* ============ CHART REGISTRY ============ */
+const chartInstances = {};
+function makeChart(id, config){
+  if(chartInstances[id]) chartInstances[id].destroy();
+  const ctx = document.getElementById(id);
+  chartInstances[id] = new Chart(ctx, config);
+}
+const baseFont = { family: "'Segoe UI', Roboto, Arial, sans-serif", size: 12 };
+Chart.defaults.font = baseFont;
+Chart.defaults.color = '#5a6472';
+Chart.defaults.plugins.legend.display = false;
+
+/* ============ RENDER KPIs ============ */
+function renderKPIs(filtered){
+  const n = filtered.length;
+
+  // TAB 1: Executive Overview
+  const netSales = sumBy(filtered,'Net Sales');
+  const profit = sumBy(filtered,'Profit');
+  const margin = div(profit, netSales);
+  const aov = div(netSales, n);
+  const units = sumBy(filtered,'Quantity');
+  const discount = sumBy(filtered,'Discount Amount');
+  const ratedRows = filtered.filter(r=>Number(r['Customer Rating'])>0);
+  const avgRating = ratedRows.length ? sumBy(ratedRows,'Customer Rating')/ratedRows.length : 0;
+
+  document.getElementById('kpi-exec').innerHTML = [
+    kpiCard('Total net sales', fmtCurrency(netSales)),
+    kpiCard('Total profit', fmtCurrency(profit)),
+    kpiCard('Overall profit margin %', fmtPct(margin)),
+    kpiCard('Total orders', fmtNum(n)),
+    kpiCard('Average order value', fmtCurrency(aov)),
+    kpiCard('Total units sold', fmtNum(units)),
+    kpiCard('Total discount given', fmtCurrency(discount)),
+    kpiCard('Average customer rating', ratedRows.length ? fmt1(avgRating)+' / 5' : '—', ratedRows.length? '' : 'no rated orders')
+  ].join('');
+
+  // TAB 2: Sales & Profitability
+  const grossSales = sumBy(filtered,'Gross Sales');
+  const totalCost = sumBy(filtered,'Total Cost');
+  const catSums = groupSum(filtered,'Product Category','Net Sales');
+  const regSums = groupSum(filtered,'Region','Net Sales');
+  const bestCat = Object.keys(catSums).length ? maxKey(catSums) : '—';
+  const bestReg = Object.keys(regSums).length ? maxKey(regSums) : '—';
+
+  document.getElementById('kpi-sales').innerHTML = [
+    kpiCard('Gross sales', fmtCurrency(grossSales)),
+    kpiCard('Net sales', fmtCurrency(netSales)),
+    kpiCard('Total cost', fmtCurrency(totalCost)),
+    kpiCard('Gross profit', fmtCurrency(profit)),
+    kpiCard('Best performing category', bestCat),
+    kpiCard('Best performing region', bestReg)
+  ].join('');
+
+  // TAB 3: Customer & Rep Performance
+  const segments = new Set(filtered.map(r=>r['Customer Segment']));
+  const repSums = groupSum(filtered,'Sales Rep','Net Sales');
+  const topRep = Object.keys(repSums).length ? maxKey(repSums) : '—';
+  const deliveredRated = filtered.filter(r=>r['Order Status']==='Delivered' && Number(r['Customer Rating'])>0);
+  const avgRatingDelivered = deliveredRated.length ? sumBy(deliveredRated,'Customer Rating')/deliveredRated.length : 0;
+  const returned = countWhere(filtered, r=>r['Order Status']==='Returned');
+  const returnRate = div(returned, n);
+
+  document.getElementById('kpi-cust').innerHTML = [
+    kpiCard('Active customer segments', fmtNum(segments.size)),
+    kpiCard('Top sales rep by revenue', topRep),
+    kpiCard('Avg. rating (delivered)', deliveredRated.length ? fmt1(avgRatingDelivered)+' / 5' : '—', deliveredRated.length? '' : 'no rated delivered orders'),
+    kpiCard('Return rate', fmtPct(returnRate))
+  ].join('');
+
+  // TAB 4: Operations
+  const delivered = countWhere(filtered, r=>r['Order Status']==='Delivered');
+  const pending = countWhere(filtered, r=>r['Order Status']==='Pending');
+  const cancelledReturned = countWhere(filtered, r=>r['Order Status']==='Cancelled' || r['Order Status']==='Returned');
+  const shippedRows = filtered.filter(r=> r['Ship Date']!==null && r['Ship Date']!==undefined && r['Order Status']!=='Cancelled');
+  const avgDelivery = shippedRows.length ? sumBy(shippedRows,'Delivery Days')/shippedRows.length : 0;
+  const shippedAny = filtered.filter(r=> r['Ship Date']!==null && r['Ship Date']!==undefined);
+  const onTime = countWhere(shippedAny, r=>Number(r['Delivery Days'])<=5);
+  const onTimeRate = div(onTime, shippedAny.length);
+
+  document.getElementById('kpi-ops').innerHTML = [
+    kpiCard('Orders delivered', fmtNum(delivered)),
+    kpiCard('Orders pending', fmtNum(pending)),
+    kpiCard('Orders cancelled / returned', fmtNum(cancelledReturned)),
+    kpiCard('Average delivery days', shippedRows.length ? fmt1(avgDelivery) : '—'),
+    kpiCard('On-time delivery rate (≤5 days)', fmtPct(onTimeRate))
+  ].join('');
+}
+
+/* ============ RENDER CHARTS PER TAB ============ */
+function renderCharts(tab, filtered){
+  const noData = filtered.length === 0;
+  document.getElementById('noDataBanner').style.display = noData ? 'block' : 'none';
+  if(noData){
+    // destroy any existing charts in this tab to avoid stale renders
+    Object.keys(chartInstances).forEach(id=>{
+      if(id.startsWith(`chart-${tab}-`)){ chartInstances[id].destroy(); delete chartInstances[id]; }
+    });
+    return;
+  }
+  if(tab==='exec') renderExecCharts(filtered);
+  else if(tab==='sales') renderSalesCharts(filtered);
+  else if(tab==='cust') renderCustCharts(filtered);
+  else if(tab==='ops') renderOpsCharts(filtered);
+}
+
+function renderExecCharts(filtered){
+  // Sales trend by month
+  const months = sortMonthKeys([...new Set(filtered.map(r=>r.Month))]);
+  const netByMonth = groupSum(filtered,'Month','Net Sales');
+  const profitByMonth = groupSum(filtered,'Month','Profit');
+  makeChart('chart-exec-trend', {
+    type:'line',
+    data:{ labels: months, datasets:[
+      { label:'Net sales', data: months.map(m=>Math.round(netByMonth[m]||0)), borderColor:'#2a78d6', backgroundColor:'rgba(42,120,214,0.1)', fill:true, tension:0.3, pointRadius:3 },
+      { label:'Profit', data: months.map(m=>Math.round(profitByMonth[m]||0)), borderColor:'#1baf7a', backgroundColor:'rgba(27,175,122,0.08)', fill:true, tension:0.3, pointRadius:3 }
+    ]},
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ display:true, position:'top', labels:{ boxWidth:10, boxHeight:10 } } },
+      scales:{ y:{ ticks:{ callback:v=>fmtCurrency(v) }, grid:{ color:'#eef1f5' } }, x:{ grid:{ display:false } } }
+    }
+  });
+
+  // Sales by region
+  const regSums = groupSum(filtered,'Region','Net Sales');
+  const regions = Object.keys(regSums).sort((a,b)=>regSums[b]-regSums[a]);
+  makeChart('chart-exec-region', {
+    type:'bar',
+    data:{ labels: regions, datasets:[{ label:'Net sales', data: regions.map(r=>Math.round(regSums[r])), backgroundColor: regions.map(r=>colorFor('Region',r)), borderRadius:4, maxBarThickness:36 }] },
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{ tooltip:{ callbacks:{ label:c=>fmtCurrency(c.parsed.y) } } },
+      scales:{ y:{ ticks:{ callback:v=>fmtCurrency(v) }, grid:{ color:'#eef1f5' } }, x:{ grid:{ display:false } } }
+    }
+  });
+
+  // Sales by category (donut)
+  const catSums = groupSum(filtered,'Product Category','Net Sales');
+  const cats = Object.keys(catSums).sort((a,b)=>catSums[b]-catSums[a]);
+  renderDonutWithLegend('chart-exec-category', cats, cats.map(c=>catSums[c]), 'Product Category', fmtCurrency);
+
+  // Order status split (donut)
+  const statSums = groupCount(filtered,'Order Status');
+  const stats = Object.keys(statSums);
+  renderDonutWithLegend('chart-exec-status', stats, stats.map(s=>statSums[s]), 'Order Status', fmtNum);
+}
+
+function renderDonutWithLegend(canvasId, labels, values, dim, formatter){
+  const total = values.reduce((a,b)=>a+b,0);
+  makeChart(canvasId, {
+    type:'doughnut',
+    data:{ labels, datasets:[{ data: values.map(v=>Math.round(v*100)/100), backgroundColor: labels.map(l=>colorFor(dim,l)), borderWidth:2, borderColor:'#fff' }] },
+    options:{ responsive:true, maintainAspectRatio:false, cutout:'62%',
+      plugins:{ legend:{ display:true, position:'right', labels:{ boxWidth:10, boxHeight:10, font:{size:11},
+        generateLabels: (chart)=> chart.data.labels.map((l,i)=>({
+          text: `${l} (${div(values[i],total)>=0?fmtPct(div(values[i],total)):'0.0%'})`,
+          fillStyle: chart.data.datasets[0].backgroundColor[i], strokeStyle:'#fff', index:i
+        }))
+      } },
+      tooltip:{ callbacks:{ label:c=>`${c.label}: ${formatter(c.parsed)}` } } }
+    }
+  });
+}
+
+function renderSalesCharts(filtered){
+  // Sales vs Profit by category (combo)
+  const catNet = groupSum(filtered,'Product Category','Net Sales');
+  const catProfit = groupSum(filtered,'Product Category','Profit');
+  const cats = Object.keys(catNet).sort((a,b)=>catNet[b]-catNet[a]);
+  makeChart('chart-sales-catcombo', {
+    data:{ labels: cats, datasets:[
+      { type:'bar', label:'Net sales', data: cats.map(c=>Math.round(catNet[c])), backgroundColor:'#2a78d6', borderRadius:4, order:2 },
+      { type:'line', label:'Profit', data: cats.map(c=>Math.round(catProfit[c])), borderColor:'#eda100', backgroundColor:'#eda100', tension:0.3, pointRadius:4, order:1 }
+    ]},
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ display:true, position:'top', labels:{boxWidth:10,boxHeight:10} } },
+      scales:{ y:{ ticks:{ callback:v=>fmtCurrency(v) }, grid:{ color:'#eef1f5' } }, x:{ grid:{ display:false } } }
+    }
+  });
+
+  // Profit margin % by region
+  const regNet = groupSum(filtered,'Region','Net Sales');
+  const regProfit = groupSum(filtered,'Region','Profit');
+  const regions = Object.keys(regNet).sort();
+  makeChart('chart-sales-marginregion', {
+    type:'bar',
+    data:{ labels: regions, datasets:[{ label:'Profit margin %', data: regions.map(r=>Math.round(div(regProfit[r],regNet[r])*1000)/10), backgroundColor: regions.map(r=>colorFor('Region',r)), borderRadius:4, maxBarThickness:36 }] },
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{ tooltip:{ callbacks:{ label:c=>c.parsed.y.toFixed(1)+'%' } } },
+      scales:{ y:{ ticks:{ callback:v=>v+'%' }, grid:{ color:'#eef1f5' } }, x:{ grid:{ display:false } } }
+    }
+  });
+
+  // Top 10 sub-categories by sales (horizontal)
+  const subSums = groupSum(filtered,'Product Sub-Category','Net Sales');
+  const subs = Object.keys(subSums).sort((a,b)=>subSums[b]-subSums[a]).slice(0,10);
+  makeChart('chart-sales-subcat', {
+    type:'bar',
+    data:{ labels: subs, datasets:[{ label:'Net sales', data: subs.map(s=>Math.round(subSums[s])), backgroundColor: subs.map(s=>colorFor('Product Sub-Category',s)), borderRadius:4 }] },
+    options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      plugins:{ tooltip:{ callbacks:{ label:c=>fmtCurrency(c.parsed.x) } } },
+      scales:{ x:{ ticks:{ callback:v=>fmtCurrency(v) }, grid:{ color:'#eef1f5' } }, y:{ grid:{ display:false } } }
+    }
+  });
+
+  // Monthly sales vs cost
+  const months = sortMonthKeys([...new Set(filtered.map(r=>r.Month))]);
+  const netByMonth = groupSum(filtered,'Month','Net Sales');
+  const costByMonth = groupSum(filtered,'Month','Total Cost');
+  makeChart('chart-sales-salescost', {
+    type:'line',
+    data:{ labels: months, datasets:[
+      { label:'Net sales', data: months.map(m=>Math.round(netByMonth[m]||0)), borderColor:'#2a78d6', backgroundColor:'rgba(42,120,214,0.08)', tension:0.3, pointRadius:3 },
+      { label:'Total cost', data: months.map(m=>Math.round(costByMonth[m]||0)), borderColor:'#e34948', backgroundColor:'rgba(227,73,72,0.08)', tension:0.3, pointRadius:3 }
+    ]},
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ display:true, position:'top', labels:{boxWidth:10,boxHeight:10} } },
+      scales:{ y:{ ticks:{ callback:v=>fmtCurrency(v) }, grid:{ color:'#eef1f5' } }, x:{ grid:{ display:false } } }
+    }
+  });
+}
+
+function renderCustCharts(filtered){
+  // Sales by customer segment (donut)
+  const segSums = groupSum(filtered,'Customer Segment','Net Sales');
+  const segs = Object.keys(segSums).sort((a,b)=>segSums[b]-segSums[a]);
+  renderDonutWithLegend('chart-cust-segment', segs, segs.map(s=>segSums[s]), 'Customer Segment', fmtCurrency);
+
+  // Sales rep leaderboard
+  const repSums = groupSum(filtered,'Sales Rep','Net Sales');
+  const reps = Object.keys(repSums).sort((a,b)=>repSums[b]-repSums[a]);
+  makeChart('chart-cust-repboard', {
+    type:'bar',
+    data:{ labels: reps, datasets:[{ label:'Net sales', data: reps.map(r=>Math.round(repSums[r])), backgroundColor: reps.map(r=>colorFor('Sales Rep',r)), borderRadius:4 }] },
+    options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      plugins:{ tooltip:{ callbacks:{ label:c=>fmtCurrency(c.parsed.x) } } },
+      scales:{ x:{ ticks:{ callback:v=>fmtCurrency(v) }, grid:{ color:'#eef1f5' } }, y:{ grid:{ display:false } } }
+    }
+  });
+
+  // Rating distribution (1-5), exclude 0
+  const ratingCounts = {1:0,2:0,3:0,4:0,5:0};
+  filtered.forEach(r=>{ const v = Number(r['Customer Rating']); if(v>=1 && v<=5) ratingCounts[v]++; });
+  makeChart('chart-cust-ratingdist', {
+    type:'bar',
+    data:{ labels:['1','2','3','4','5'], datasets:[{ label:'Orders', data:[1,2,3,4,5].map(k=>ratingCounts[k]), backgroundColor:'#7c3aed', borderRadius:4, maxBarThickness:44 }] },
+    options:{ responsive:true, maintainAspectRatio:false,
+      scales:{ y:{ ticks:{ stepSize:1, precision:0 }, grid:{ color:'#eef1f5' } }, x:{ grid:{ display:false } } }
+    }
+  });
+
+  // Avg delivery days by region (exclude cancelled)
+  const nonCancelled = filtered.filter(r=>r['Order Status']!=='Cancelled');
+  const regions = [...new Set(nonCancelled.map(r=>r.Region))].sort();
+  const avgByRegion = regions.map(reg=>{
+    const rows = nonCancelled.filter(r=>r.Region===reg);
+    return rows.length ? sumBy(rows,'Delivery Days')/rows.length : 0;
+  });
+  makeChart('chart-cust-deliveryregion', {
+    type:'bar',
+    data:{ labels: regions, datasets:[{ label:'Avg delivery days', data: avgByRegion.map(v=>Math.round(v*10)/10), backgroundColor: regions.map(r=>colorFor('Region',r)), borderRadius:4, maxBarThickness:36 }] },
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{ tooltip:{ callbacks:{ label:c=>c.parsed.y.toFixed(1)+' days' } } },
+      scales:{ y:{ ticks:{ callback:v=>v+'d' }, grid:{ color:'#eef1f5' } }, x:{ grid:{ display:false } } }
+    }
+  });
+}
+
+function renderOpsCharts(filtered){
+  // Order status by month (stacked)
+  const months = sortMonthKeys([...new Set(filtered.map(r=>r.Month))]);
+  const statuses = [...new Set(filtered.map(r=>r['Order Status']))];
+  const datasets = statuses.map(st=>({
+    label: st,
+    data: months.map(m=> countWhere(filtered, r=>r.Month===m && r['Order Status']===st)),
+    backgroundColor: colorFor('Order Status', st),
+    borderRadius:3
+  }));
+  makeChart('chart-ops-statusmonth', {
+    type:'bar',
+    data:{ labels: months, datasets },
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ display:true, position:'top', labels:{boxWidth:10,boxHeight:10} } },
+      scales:{ x:{ stacked:true, grid:{ display:false } }, y:{ stacked:true, ticks:{ stepSize:1, precision:0 }, grid:{ color:'#eef1f5' } } }
+    }
+  });
+
+  // Delivery days distribution (exclude cancelled)
+  const nonCancelled = filtered.filter(r=>r['Order Status']!=='Cancelled');
+  const buckets = [
+    {label:'0-2', test:d=>d>=0 && d<=2},
+    {label:'3-5', test:d=>d>=3 && d<=5},
+    {label:'6-8', test:d=>d>=6 && d<=8},
+    {label:'9-11', test:d=>d>=9 && d<=11},
+    {label:'12+', test:d=>d>=12}
+  ];
+  const bucketCounts = buckets.map(b=> countWhere(nonCancelled, r=>b.test(Number(r['Delivery Days']))));
+  makeChart('chart-ops-deliverydist', {
+    type:'bar',
+    data:{ labels: buckets.map(b=>b.label+' days'), datasets:[{ label:'Orders', data: bucketCounts, backgroundColor:'#2a78d6', borderRadius:4, maxBarThickness:44 }] },
+    options:{ responsive:true, maintainAspectRatio:false,
+      scales:{ y:{ ticks:{ stepSize:1, precision:0 }, grid:{ color:'#eef1f5' } }, x:{ grid:{ display:false } } }
+    }
+  });
+
+  // Cancelled/Returned by category
+  const crRows = filtered.filter(r=>r['Order Status']==='Cancelled' || r['Order Status']==='Returned');
+  const catCounts = groupCount(crRows,'Product Category');
+  const cats = Object.keys(catCounts).sort((a,b)=>catCounts[b]-catCounts[a]);
+  makeChart('chart-ops-cancelcat', {
+    type:'bar',
+    data:{ labels: cats, datasets:[{ label:'Cancelled / returned', data: cats.map(c=>catCounts[c]), backgroundColor: cats.map(c=>colorFor('Product Category',c)), borderRadius:4, maxBarThickness:36 }] },
+    options:{ responsive:true, maintainAspectRatio:false,
+      scales:{ y:{ ticks:{ stepSize:1, precision:0 }, grid:{ color:'#eef1f5' } }, x:{ grid:{ display:false } } }
+    }
+  });
+}
+
+/* ============ MAIN RENDER ============ */
+function renderAll(){
+  const filtered = getFiltered();
+  document.getElementById('recordCount').textContent = `Showing ${filtered.length} of ${DATA.length} orders`;
+  renderKPIs(filtered);
+  renderCharts(activeTab, filtered);
+}
+
+renderAll();
+</script>
+</body>
+</html>
