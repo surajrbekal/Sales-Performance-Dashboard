@@ -24,5 +24,5 @@ An Interactive Sales Performance Dashboard with responsive UI design. The dashbo
 - Data-Driven Decision Support.
 
 ## Live Dashboard
-https://surajrbekal.github.io/Sales--Performance-Dashboard/
+https://surajrbekal.github.io/Sales-Performance-Dashboard/
 
