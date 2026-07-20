@@ -15,14 +15,13 @@ An Interactive Sales Performance Dashboard with responsive UI design. The dashbo
 - Automatic KPI recalculation based on applied filters.
 
 # Skills Demonstrated
-Frontend Dashboard Development.
-Interactive Data Visualization.
-KPI Design & Business Analytics.
-Data Aggregation & Transformation.
-Responsive Web Design.
-Dynamic Filtering.
-Business Intelligence & Performance Reporting.
-Data-Driven Decision Support.
+- Frontend Dashboard Development.
+- Interactive Data Visualization.
+- Responsive Web Design.
+- Dynamic Filtering.
+- KPI Design & Business Analytics.
+- Data Aggregation & Transformation.
+- Data-Driven Decision Support.
 
 ## Live Dashboard
 https://surajrbekal.github.io/Sales--Performance-Dashboard/
